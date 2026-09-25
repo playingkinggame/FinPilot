@@ -1,0 +1,6 @@
+{
+  "name": "FinPilot",
+  "description": "Understand your money. Plan what comes next. Modern AI-powered personal finance operating system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
