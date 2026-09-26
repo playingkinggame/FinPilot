@@ -1,6 +1,6 @@
 // FinPilot AI Financial Copilot Chat & Query Engine
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { useFinPilot } from '../../lib/supabase/context';
 import { processFinancialChatTurn } from '../../lib/ai/financial-chat';
 import { ChatMessage, StructuredChartPayload } from '../../types';
@@ -9,12 +9,7 @@ import {
   Send,
   X,
   Trash2,
-  ArrowRight,
-  TrendingUp,
-  PieChart as PieIcon,
-  ChevronRight,
-  ShieldCheck,
-  RotateCcw
+  ChevronRight
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -27,16 +22,19 @@ import {
   Line,
   XAxis,
   YAxis,
-  Tooltip,
-  CartesianGrid
+  Tooltip
 } from 'recharts';
 
 interface AICopilotDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  // 'drawer' (default) = the compact slide-over panel triggered from any page.
+  // 'page' = a large, full-tab layout rendered inline in the main content area
+  // (used when the person navigates to the "AI Copilot" section itself).
+  variant?: 'drawer' | 'page';
 }
 
-export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClose }) => {
+export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClose, variant = 'drawer' }) => {
   const {
     chatMessages,
     addChatMessage,
@@ -52,6 +50,8 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const isPage = variant === 'page';
+
   const suggestedQueries = [
     'What did I spend the most on?',
     'Can I afford a ₹5,000 purchase?',
@@ -62,7 +62,8 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
     'What subscriptions cost me the most?',
     'Show spending by payment method',
     'Compare food vs shopping',
-    'What are my biggest money leaks?'
+    'What are my biggest money leaks?',
+    'How to save more money?'
   ];
 
   const scrollToBottom = () => {
@@ -115,29 +116,53 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
+  // ---- Size tokens that flex between the compact drawer and the big full-page tab ----
+  const headerH = isPage ? 'h-20' : 'h-16';
+  const headerPad = isPage ? 'px-6 md:px-8' : 'px-5';
+  const avatarBox = isPage ? 'h-11 w-11' : 'h-8 w-8';
+  const avatarIcon = isPage ? 'h-5 w-5' : 'h-4 w-4';
+  const titleText = isPage ? 'text-lg md:text-xl' : 'text-sm';
+  const subtitleText = isPage ? 'text-xs md:text-sm' : 'text-[11px]';
+  const chatPad = isPage ? 'p-6 md:p-10 space-y-6' : 'p-4 space-y-4';
+  const bubbleMaxW = isPage ? 'max-w-[80%] md:max-w-[70%]' : 'max-w-[90%]';
+  const bubblePad = isPage ? 'p-5 md:p-6 text-sm' : 'p-4 text-xs';
+  const inputBarPad = isPage ? 'p-5 md:p-6' : 'p-4';
+  const inputFieldPad = isPage ? 'px-5 py-3.5 text-sm' : 'px-4 py-2.5 text-xs';
+  const sendBtn = isPage ? 'h-11 w-11' : 'h-9 w-9';
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
+    <div
+      className={
+        isPage
+          ? 'flex h-[calc(100vh-4rem)] w-full flex-col px-4 py-4 md:px-8 md:py-6'
+          : 'fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm'
+      }
+    >
       <motion.div
-        initial={{ opacity: 0, x: 320 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 320 }}
+        initial={isPage ? { opacity: 0, y: 14 } : { opacity: 0, x: 320 }}
+        animate={isPage ? { opacity: 1, y: 0 } : { opacity: 1, x: 0 }}
+        exit={isPage ? { opacity: 0, y: 14 } : { opacity: 0, x: 320 }}
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-        className="relative flex h-full w-full max-w-lg flex-col border-l border-neutral-800 bg-neutral-950 text-neutral-100 shadow-2xl"
+        className={
+          isPage
+            ? 'relative mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950 text-neutral-100 shadow-2xl'
+            : 'relative flex h-full w-full max-w-lg flex-col border-l border-neutral-800 bg-neutral-950 text-neutral-100 shadow-2xl'
+        }
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b border-neutral-800 px-5 bg-neutral-900/60">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-              <Sparkles className="h-4 w-4" />
+        <div className={`flex ${headerH} items-center justify-between border-b border-neutral-800 ${headerPad} bg-neutral-900/60`}>
+          <div className="flex items-center gap-2.5 md:gap-3.5">
+            <div className={`flex ${avatarBox} items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400`}>
+              <Sparkles className={avatarIcon} />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+              <h2 className={`${titleText} font-bold text-white flex items-center gap-1.5`}>
                 <span>FinPilot Copilot</span>
                 <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded font-mono">
                   Groq LLM
                 </span>
               </h2>
-              <p className="text-[11px] text-neutral-400">Deterministic Financial Math Engine</p>
+              <p className={`${subtitleText} text-neutral-400`}>Deterministic Financial Math Engine</p>
             </div>
           </div>
 
@@ -145,29 +170,29 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
             <button
               onClick={clearChat}
               title="Clear Conversation"
-              className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors"
+              className={`${isPage ? 'p-2' : 'p-1.5'} text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors`}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className={isPage ? 'h-4.5 w-4.5' : 'h-4 w-4'} />
             </button>
             <button
               onClick={onClose}
-              title="Close Copilot"
-              className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors"
+              title={isPage ? 'Back to Dashboard' : 'Close Copilot'}
+              className={`${isPage ? 'p-2' : 'p-1.5'} text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors`}
             >
-              <X className="h-4 w-4" />
+              <X className={isPage ? 'h-4.5 w-4.5' : 'h-4 w-4'} />
             </button>
           </div>
         </div>
 
         {/* Chat History */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className={`flex-1 overflow-y-auto ${chatPad}`}>
           {chatMessages.map((msg) => (
             <div
               key={msg.id}
               className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[90%] rounded-2xl p-4 text-xs leading-relaxed space-y-3 ${
+                className={`${bubbleMaxW} rounded-2xl ${bubblePad} leading-relaxed space-y-3 ${
                   msg.sender === 'user'
                     ? 'bg-neutral-800 text-white rounded-br-none border border-neutral-700/60'
                     : 'bg-neutral-900/80 text-neutral-200 rounded-bl-none border border-neutral-800'
@@ -182,7 +207,7 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
 
                 {/* Structured Metric Cards */}
                 {msg.metricCards && msg.metricCards.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className={`grid grid-cols-2 gap-2 pt-1 ${isPage ? 'max-w-md' : ''}`}>
                     {msg.metricCards.map((mc, idx) => (
                       <div key={idx} className="p-2.5 rounded-xl bg-neutral-950/80 border border-neutral-800">
                         <span className="text-[10px] text-neutral-500 uppercase block">{mc.label}</span>
@@ -194,7 +219,7 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
                 )}
 
                 {/* Embedded Mini Visualizations */}
-                {msg.chart && <RenderMiniChart chart={msg.chart} />}
+                {msg.chart && <RenderMiniChart chart={msg.chart} large={isPage} />}
 
                 {/* Action Links */}
                 {msg.actionLinks && msg.actionLinks.length > 0 && (
@@ -204,7 +229,7 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
                         key={idx}
                         onClick={() => {
                           setActiveView(al.view);
-                          onClose();
+                          if (!isPage) onClose();
                         }}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                       >
@@ -231,8 +256,8 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
         </div>
 
         {/* Suggested Queries Tray */}
-        <div className="border-t border-neutral-900 bg-neutral-950 px-4 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-1.5">
+        <div className={`border-t border-neutral-900 bg-neutral-950 ${isPage ? 'px-6 md:px-8 py-3' : 'px-4 py-2'}`}>
+          <div className={`${isPage ? 'text-[11px]' : 'text-[10px]'} uppercase tracking-wider text-neutral-500 font-semibold mb-1.5`}>
             Suggested Queries
           </div>
           <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
@@ -240,7 +265,9 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
               <button
                 key={q}
                 onClick={() => handleSend(q)}
-                className="shrink-0 rounded-lg border border-neutral-800 bg-neutral-900/80 px-2.5 py-1 text-[11px] text-neutral-300 hover:border-emerald-500/40 hover:text-white transition-colors"
+                className={`shrink-0 rounded-lg border border-neutral-800 bg-neutral-900/80 ${
+                  isPage ? 'px-3 py-1.5 text-xs' : 'px-2.5 py-1 text-[11px]'
+                } text-neutral-300 hover:border-emerald-500/40 hover:text-white transition-colors`}
               >
                 {q}
               </button>
@@ -249,7 +276,7 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
         </div>
 
         {/* Input Bar */}
-        <div className="border-t border-neutral-800 p-4 bg-neutral-900/40">
+        <div className={`border-t border-neutral-800 ${inputBarPad} bg-neutral-900/40`}>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -262,14 +289,14 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
               placeholder="Ask anything about your money..."
-              className="flex-1 rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-2.5 text-xs text-white placeholder-neutral-500 focus:border-emerald-500 focus:outline-none"
+              className={`flex-1 rounded-xl border border-neutral-800 bg-neutral-950 ${inputFieldPad} text-white placeholder-neutral-500 focus:border-emerald-500 focus:outline-none`}
             />
             <button
               type="submit"
               disabled={!inputQuery.trim() || loading}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-neutral-950 hover:bg-emerald-400 disabled:opacity-40 transition-colors shadow-md shrink-0"
+              className={`flex ${sendBtn} items-center justify-center rounded-xl bg-emerald-500 text-neutral-950 hover:bg-emerald-400 disabled:opacity-40 transition-colors shadow-md shrink-0`}
             >
-              <Send className="h-4 w-4" />
+              <Send className={isPage ? 'h-5 w-5' : 'h-4 w-4'} />
             </button>
           </form>
         </div>
@@ -278,14 +305,17 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
   );
 };
 
-const RenderMiniChart: React.FC<{ chart: StructuredChartPayload }> = ({ chart }) => {
+const RenderMiniChart: React.FC<{ chart: StructuredChartPayload; large?: boolean }> = ({ chart, large }) => {
+  const chartH = large ? 'h-56' : 'h-40';
+  const donutInnerH = large ? 'h-52' : 'h-36';
+
   return (
-    <div className="rounded-xl bg-neutral-950/80 border border-neutral-800/80 p-3 my-2">
+    <div className={`rounded-xl bg-neutral-950/80 border border-neutral-800/80 p-3 my-2 ${large ? 'max-w-lg' : ''}`}>
       <div className="text-[11px] font-semibold text-neutral-300 mb-2">{chart.title}</div>
-      <div className="h-40 w-full">
+      <div className={`${chartH} w-full`}>
         {chart.type === 'donut' ? (
           <div className="space-y-2">
-            <div className="h-36 w-full">
+            <div className={`${donutInnerH} w-full`}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -294,8 +324,8 @@ const RenderMiniChart: React.FC<{ chart: StructuredChartPayload }> = ({ chart })
                     nameKey="label"
                     cx="50%"
                     cy="50%"
-                    innerRadius={35}
-                    outerRadius={55}
+                    innerRadius={large ? 50 : 35}
+                    outerRadius={large ? 78 : 55}
                     paddingAngle={3}
                   >
                     {chart.data.map((entry, index) => (

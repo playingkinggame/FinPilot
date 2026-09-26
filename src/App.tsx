@@ -69,7 +69,6 @@ const FinPilotApp: React.FC = () => {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileModalTab, setProfileModalTab] = useState<'profile' | 'settings' | 'security'>('profile');
-  const [copilotOpen, setCopilotOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [receiptScannerOpen, setReceiptScannerOpen] = useState(false);
 
@@ -186,7 +185,7 @@ const FinPilotApp: React.FC = () => {
           setProfileModalTab('security');
           setProfileModalOpen(true);
         }}
-        onOpenCopilot={() => setCopilotOpen(true)}
+        onOpenCopilot={() => setActiveView('copilot')}
       />
 
       {/* Main Workspace Frame (TopBar + Content View) */}
@@ -197,7 +196,7 @@ const FinPilotApp: React.FC = () => {
             setQuickType('expense');
             setQuickAddOpen(true);
           }}
-          onOpenCopilot={() => setCopilotOpen(true)}
+          onOpenCopilot={() => setActiveView('copilot')}
           onOpenSearch={() => setSearchModalOpen(true)}
           onOpenProfile={() => {
             setProfileModalTab('profile');
@@ -219,7 +218,7 @@ const FinPilotApp: React.FC = () => {
                 setQuickCategory('Salary');
                 setQuickAddOpen(true);
               }}
-              onOpenCopilot={() => setCopilotOpen(true)}
+              onOpenCopilot={() => setActiveView('copilot')}
               onOpenScanReceipt={() => setReceiptScannerOpen(true)}
             />
           )}
@@ -228,6 +227,13 @@ const FinPilotApp: React.FC = () => {
           {activeView === 'budgets' && <BudgetsView />}
           {activeView === 'goals' && <GoalsView />}
           {activeView === 'subscriptions' && <SubscriptionsView />}
+          {activeView === 'copilot' && (
+            <AICopilotDrawer
+              isOpen
+              variant="page"
+              onClose={() => setActiveView('dashboard')}
+            />
+          )}
           {activeView === 'cashflow' && <CashFlowView />}
           {activeView === 'whatif' && <WhatIfSimulatorView />}
           {activeView === 'leaks' && <MoneyLeakDetectorView />}
@@ -262,11 +268,7 @@ const FinPilotApp: React.FC = () => {
                     <button
                       key={item.id}
                       onClick={() => {
-                        if (item.id === 'copilot') {
-                          setCopilotOpen(true);
-                        } else {
-                          setActiveView(item.id);
-                        }
+                        setActiveView(item.id);
                         setMobileDrawerOpen(false);
                       }}
                       className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
@@ -302,7 +304,7 @@ const FinPilotApp: React.FC = () => {
 
       {/* Mobile Bottom Navigation Bar */}
       <MobileNav
-        onOpenCopilot={() => setCopilotOpen(true)}
+        onOpenCopilot={() => setActiveView('copilot')}
         onOpenQuickAdd={() => {
           setQuickType('expense');
           setQuickAddOpen(true);
@@ -320,12 +322,6 @@ const FinPilotApp: React.FC = () => {
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
         defaultTab={profileModalTab}
-      />
-
-      {/* AI Copilot Slide-over Drawer (Groq-powered) */}
-      <AICopilotDrawer
-        isOpen={copilotOpen}
-        onClose={() => setCopilotOpen(false)}
       />
 
       {/* Receipt OCR Scanner Modal */}
