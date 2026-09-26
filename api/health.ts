@@ -1,7 +1,7 @@
 // Vercel Serverless Function: GET /api/health
 // Quick way to confirm env vars are wired correctly after deployment.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { GROQ_MODEL } from './_groq';
+import { GROQ_MODEL } from './_groq.js';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   res.status(200).json({

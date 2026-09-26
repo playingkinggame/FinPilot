@@ -2,7 +2,7 @@
 // Keeps GROQ_API_KEY server-side only. Mirrors the /api/ai/chat route in server.ts
 // which is used instead when running locally via `npm run dev`.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getGroqClient, GROQ_MODEL } from '../_groq';
+import { getGroqClient, GROQ_MODEL } from '../_groq.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

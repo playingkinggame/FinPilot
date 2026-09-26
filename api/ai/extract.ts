@@ -2,7 +2,7 @@
 // Extracts structured transaction data from receipt/screenshot text.
 // Mirrors the /api/ai/extract route in server.ts used during local dev.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getGroqClient, GROQ_MODEL } from '../_groq';
+import { getGroqClient, GROQ_MODEL } from '../_groq.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
