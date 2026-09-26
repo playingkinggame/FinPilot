@@ -198,6 +198,33 @@ function synthesizeDeterministicResponse(
       return `## Identified Money Leaks\n\n${leakItems}\n\nReview the Money Leak Detector page to curb recurring creep.`;
     }
 
+    case 'savings_summary': {
+      const { totalIncome, totalExpense, balance, savingsRate, topCategories, leaks } = calculatedData;
+      const topCats = topCategories || [];
+      const topLeaks = leaks || [];
+
+      const catLines = topCats
+        .slice(0, 3)
+        .map((c: any) => `• Trim **${c.category}** — currently ₹${c.amount.toLocaleString()} (${c.percentage}% of spend)`)
+        .join('\n');
+
+      const leakLines = topLeaks.length
+        ? `\n\n**Recurring leaks worth cutting:**\n${topLeaks
+            .map((l: any) => `• ${l.title} — could save ~₹${l.potentialSavingsYearly.toLocaleString()}/yr`)
+            .join('\n')}`
+        : '';
+
+      return `## How to Save More\n\nYou're currently saving **${savingsRate}%** of your income (₹${totalIncome.toLocaleString()} in vs ₹${totalExpense.toLocaleString()} out, leaving a balance of ₹${balance.toLocaleString()}).\n\n**Fastest wins, based on your actual spending:**\n${catLines || 'Add a few transactions so I can point to specific categories.'}${leakLines}\n\nA good target is pushing your savings rate above 20%. Want me to run a what-if on cutting one of these categories?`;
+    }
+
+    case 'general_overview': {
+      const { totalIncome, totalExpense, balance, savingsRate, topCategories } = calculatedData;
+      const top = (topCategories || [])[0];
+      return `I didn't catch a specific metric to pull, so here's your current snapshot: **₹${totalIncome.toLocaleString()}** in, **₹${totalExpense.toLocaleString()}** out, leaving a balance of **₹${balance.toLocaleString()}** (a **${savingsRate}%** savings rate)${
+        top ? `, with **${top.category}** as your biggest expense category` : ''
+      }.\n\nAsk me things like "what did I spend the most on", "can I afford ₹5,000", "how to save more", or "compare this month vs last month" and I'll pull the exact numbers.`;
+    }
+
     case 'subscriptions': {
       const { monthlyTotal, annualTotal, activeCount, upcomingRenewals } = calculatedData;
       return `You have **${activeCount} active subscriptions** costing **₹${monthlyTotal.toLocaleString()}/month** (an annual obligation of **₹${annualTotal.toLocaleString()}**).\n\n${

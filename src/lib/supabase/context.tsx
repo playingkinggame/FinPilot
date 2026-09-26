@@ -4,7 +4,7 @@
 // Postgres database defined in supabase-schema.sql, scoped per-user via Row Level Security.
 // When Supabase is NOT configured, the app falls back to a local browser account backed by
 // localStorage so the product still works fully offline / without setup.
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from './client';
 import {
   Transaction,
@@ -262,6 +262,15 @@ export const FinPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('finpilot_onboarded', JSON.stringify(isOnboarded));
   }, [isOnboarded]);
 
+  // Tracks which user id we've already fully loaded the workspace for, so that
+  // Supabase auth events which do NOT represent a genuinely new sign-in (e.g. a
+  // TOKEN_REFRESHED or a duplicate SIGNED_IN that supabase-js fires every time the
+  // browser tab regains focus/visibility) don't re-trigger a full workspace reload
+  // and the "Loading your workspace…" screen. Using a ref keeps this in sync with
+  // the check performed synchronously inside the auth listener below, without
+  // triggering re-subscription of the listener itself.
+  const loadedUserIdRef = useRef<string | null>(null);
+
   // Handle Supabase Auth Session
   useEffect(() => {
     if (isSupabaseConfigured && supabase) {
@@ -271,13 +280,36 @@ export const FinPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       });
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (session?.user) {
-          handleUserLoggedIn(session.user);
-        } else {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!session?.user) {
+          loadedUserIdRef.current = null;
           setUser(null);
           localStorage.removeItem('finpilot_user');
+          return;
         }
+
+        // supabase-js re-validates the session (and fires TOKEN_REFRESHED, and on
+        // some browsers a repeat SIGNED_IN/INITIAL_SESSION) every time the tab
+        // becomes visible again. None of these represent a new sign-in for a
+        // *different* user, so if we've already loaded this exact user's
+        // workspace, just keep the refreshed session/user in sync without
+        // wiping the UI back to the loading screen and re-fetching everything.
+        if (loadedUserIdRef.current === session.user.id) {
+          setUser(session.user);
+          localStorage.setItem('finpilot_user', JSON.stringify(session.user));
+          return;
+        }
+
+        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+          // Token refreshes never change which user is logged in; just sync the
+          // (possibly first-load) user object without a full data reload.
+          setUser(session.user);
+          localStorage.setItem('finpilot_user', JSON.stringify(session.user));
+          return;
+        }
+
+        loadedUserIdRef.current = session.user.id;
+        handleUserLoggedIn(session.user);
       });
 
       return () => subscription.unsubscribe();
@@ -287,6 +319,7 @@ export const FinPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Load everything for a user. In Supabase mode this reads straight from Postgres
   // (RLS-scoped to auth.uid()); in Demo Mode it reads from localStorage.
   const handleUserLoggedIn = async (loggedInUser: any) => {
+    loadedUserIdRef.current = loggedInUser.id;
     setUser(loggedInUser);
     localStorage.setItem('finpilot_user', JSON.stringify(loggedInUser));
 
@@ -506,6 +539,7 @@ export const FinPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (isSupabaseConfigured && supabase) {
       await supabase.auth.signOut();
     }
+    loadedUserIdRef.current = null;
     setUser(null);
     localStorage.removeItem('finpilot_user');
     setTransactions([]);
@@ -734,6 +768,10 @@ export const FinPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         .then(({ data, error }) => {
           if (error) {
             console.error('Failed to save goal:', error.message);
+            // Roll back the optimistic row instead of leaving a "phantom" goal that
+            // only vanishes on the next refresh once we re-fetch from the DB. This
+            // surfaces save failures (e.g. a schema mismatch) immediately in the UI.
+            setGoals((prev) => prev.filter((row) => row.id !== tempId));
             return;
           }
           if (data) {

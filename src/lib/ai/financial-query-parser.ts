@@ -373,13 +373,52 @@ export function parseFinancialQuery(
     };
   }
 
-  // Default: Top categories & spending breakdown
+  // 12. Savings advice ("how to save money", "how can I save more", "tips", "advice")
+  if (
+    q.includes('save') ||
+    q.includes('saving') ||
+    q.includes('tips') ||
+    q.includes('advice') ||
+    q.includes('improve') ||
+    q.includes('budget better') ||
+    q.includes('cut cost') ||
+    q.includes('cut spending')
+  ) {
+    const savingsRate = calculateSavingsRate(transactions);
+    return {
+      intent: 'savings_summary',
+      calculatedData: {
+        totalIncome,
+        totalExpense,
+        balance,
+        savingsRate,
+        topCategories: topCats.slice(0, 3),
+        leaks: leaks.slice(0, 3)
+      },
+      chartPayload: {
+        type: 'donut',
+        title: 'Where Your Money Is Going',
+        unit: '₹',
+        data: topCats.map((c) => ({
+          label: c.category,
+          value: c.amount,
+          color: c.color
+        }))
+      },
+      suggestedAction: { label: 'Open Money Leak Detector', view: 'leaks' }
+    };
+  }
+
+  // Default: no specific pattern matched — give a general account snapshot rather
+  // than silently reusing the top-spending-categories answer for every unrelated
+  // question (greetings, thanks, unrecognized phrasing, etc).
   return {
-    intent: 'top_category',
+    intent: 'general_overview',
     calculatedData: {
       totalExpense,
       totalIncome,
       balance,
+      savingsRate: calculateSavingsRate(transactions),
       topCategories: topCats
     },
     chartPayload: {
