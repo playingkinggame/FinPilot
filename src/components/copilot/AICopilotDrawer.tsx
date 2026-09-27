@@ -312,88 +312,95 @@ const RenderMiniChart: React.FC<{ chart: StructuredChartPayload; large?: boolean
   return (
     <div className={`rounded-xl bg-neutral-950/80 border border-neutral-800/80 p-3 my-2 ${large ? 'max-w-lg' : ''}`}>
       <div className="text-[11px] font-semibold text-neutral-300 mb-2">{chart.title}</div>
-      <div className={`${chartH} w-full`}>
-        {chart.type === 'donut' ? (
-          <div className="space-y-2">
-            <div className={`${donutInnerH} w-full`}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chart.data}
-                    dataKey="value"
-                    nameKey="label"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={large ? 50 : 35}
-                    outerRadius={large ? 78 : 55}
-                    paddingAngle={3}
-                  >
-                    {chart.data.map((entry, index) => (
-                      <Cell key={`c-${index}`} fill={entry.color || '#10B981'} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#18181B', borderColor: '#27272A', borderRadius: '8px', fontSize: '11px' }}
-                    formatter={(v: any, _name: any, item: any) => [
-                      `${chart.unit || ''}${Number(v).toLocaleString()}`,
-                      `Spent on: ${item?.payload?.label || 'Item'}`
-                    ]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            {/* List of spending items & prices */}
-            <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
-              {chart.data.map((d, i) => (
-                <div key={i} className="flex items-center justify-between text-[10px] text-neutral-300">
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: d.color || '#10B981' }} />
-                    <span className="truncate">{d.label}</span>
-                  </div>
-                  <span className="font-mono font-semibold text-white ml-2 shrink-0">
-                    {chart.unit || ''}{Number(d.value).toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
+      {chart.type === 'donut' ? (
+        // No fixed outer height here: the donut ring + the category list below it
+        // together are taller than a single fixed box, so wrapping them in one
+        // (chartH) fixed-height container let the list spill out and get covered
+        // by whatever rendered next (e.g. the "View Full Analytics" button) — that
+        // was the overlapping-text bug. Let this section size itself naturally.
+        <div className="space-y-2">
+          <div className={`${donutInnerH} w-full`}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chart.data}
+                  dataKey="value"
+                  nameKey="label"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={large ? 50 : 35}
+                  outerRadius={large ? 78 : 55}
+                  paddingAngle={3}
+                >
+                  {chart.data.map((entry, index) => (
+                    <Cell key={`c-${index}`} fill={entry.color || '#10B981'} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#18181B', borderColor: '#27272A', borderRadius: '8px', fontSize: '11px' }}
+                  formatter={(v: any, _name: any, item: any) => [
+                    `${chart.unit || ''}${Number(v).toLocaleString()}`,
+                    `Spent on: ${item?.payload?.label || 'Item'}`
+                  ]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
-        ) : chart.type === 'horizontal_bar' ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart layout="vertical" data={chart.data} margin={{ top: 5, right: 10, left: 20, bottom: 5 }}>
-              <XAxis type="number" stroke="#71717A" fontSize={9} />
-              <YAxis type="category" dataKey="label" stroke="#A1A1AA" fontSize={10} tickLine={false} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#18181B', borderColor: '#27272A', borderRadius: '8px', fontSize: '11px' }}
-                formatter={(v: any) => [`${chart.unit || ''}${v.toLocaleString()}`, 'Spent']}
-              />
-              <Bar dataKey="value" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : chart.type === 'line' ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chart.data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-              <XAxis dataKey="label" stroke="#71717A" fontSize={9} tickLine={false} />
-              <YAxis stroke="#71717A" fontSize={9} tickLine={false} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#18181B', borderColor: '#27272A', borderRadius: '8px', fontSize: '11px' }}
-              />
-              <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chart.data} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
-              <XAxis dataKey="label" stroke="#71717A" fontSize={9} tickLine={false} />
-              <YAxis stroke="#71717A" fontSize={9} tickLine={false} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#18181B', borderColor: '#27272A', borderRadius: '8px', fontSize: '11px' }}
-                formatter={(v: any) => [`${chart.unit || ''}${v.toLocaleString()}`, 'Value']}
-              />
-              <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-      </div>
+          {/* List of spending items & prices */}
+          <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
+            {chart.data.map((d, i) => (
+              <div key={i} className="flex items-center justify-between text-[10px] text-neutral-300">
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: d.color || '#10B981' }} />
+                  <span className="truncate">{d.label}</span>
+                </div>
+                <span className="font-mono font-semibold text-white ml-2 shrink-0">
+                  {chart.unit || ''}{Number(d.value).toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className={`${chartH} w-full`}>
+          {chart.type === 'horizontal_bar' ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart layout="vertical" data={chart.data} margin={{ top: 5, right: 10, left: 20, bottom: 5 }}>
+                <XAxis type="number" stroke="#71717A" fontSize={9} />
+                <YAxis type="category" dataKey="label" stroke="#A1A1AA" fontSize={10} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#18181B', borderColor: '#27272A', borderRadius: '8px', fontSize: '11px' }}
+                  formatter={(v: any) => [`${chart.unit || ''}${v.toLocaleString()}`, 'Spent']}
+                />
+                <Bar dataKey="value" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : chart.type === 'line' ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chart.data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <XAxis dataKey="label" stroke="#71717A" fontSize={9} tickLine={false} />
+                <YAxis stroke="#71717A" fontSize={9} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#18181B', borderColor: '#27272A', borderRadius: '8px', fontSize: '11px' }}
+                />
+                <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chart.data} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
+                <XAxis dataKey="label" stroke="#71717A" fontSize={9} tickLine={false} />
+                <YAxis stroke="#71717A" fontSize={9} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#18181B', borderColor: '#27272A', borderRadius: '8px', fontSize: '11px' }}
+                  formatter={(v: any) => [`${chart.unit || ''}${v.toLocaleString()}`, 'Value']}
+                />
+                <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      )}
     </div>
   );
 };

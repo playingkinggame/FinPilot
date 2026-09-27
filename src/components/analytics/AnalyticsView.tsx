@@ -143,11 +143,18 @@ export const AnalyticsView: React.FC = () => {
     return Array.from({ length: Math.min(31, daysInCurrentMonth) }, (_, i) => {
       const day = i + 1;
       const dateStr = `${curMonthStr}-${String(day).padStart(2, '0')}`;
-      const matched = trendData.find((t) => t.date === dateStr);
-      const amt = matched ? matched.amount : 0;
+      // Compute directly from filteredTransactions (respecting the category/payment
+      // filters) instead of relying on the top time-range trend, whose dates are
+      // "MM-DD" strings scoped to a rolling 7D/30D/etc window — comparing those
+      // against a full "YYYY-MM-DD" string never matched, so every cell showed ₹0
+      // regardless of the selected range. This always reflects the full current
+      // calendar month, independent of the 7D/30D/3M/6M/1Y selector above.
+      const amt = filteredTransactions
+        .filter((t) => t.type === 'expense' && t.date === dateStr)
+        .reduce((s, t) => s + Number(t.amount || 0), 0);
       return { day, dateStr, amount: amt };
     });
-  }, [daysInCurrentMonth, curMonthStr, trendData]);
+  }, [daysInCurrentMonth, curMonthStr, filteredTransactions]);
 
   // Real Category Deep-Dive Trend
   const deepDiveTrend = useMemo(() => {
@@ -376,47 +383,10 @@ export const AnalyticsView: React.FC = () => {
                         />
                       ))}
                     </Pie>
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload;
-                          return (
-                            <div className="rounded-xl border border-neutral-700 bg-neutral-950 p-3 shadow-2xl text-xs max-w-xs space-y-1.5">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-1.5">
-                                  <span
-                                    className="h-2.5 w-2.5 rounded-full"
-                                    style={{ backgroundColor: data.color }}
-                                  />
-                                  <strong className="text-white font-semibold">{data.category}</strong>
-                                </div>
-                                <span className="text-[11px] font-mono text-emerald-400 font-bold">
-                                  {data.percentage}%
-                                </span>
-                              </div>
-
-                              <div className="text-base font-extrabold text-white font-mono">
-                                {currencySymbol}{Number(data.amount).toLocaleString()}
-                              </div>
-
-                              <div className="pt-1 border-t border-neutral-800">
-                                <span className="text-[10px] text-neutral-400 block uppercase font-medium">
-                                  What we spent on:
-                                </span>
-                                <p className="text-xs text-neutral-200 font-medium mt-0.5">
-                                  {data.topItems || 'Expenses in this category'}
-                                </p>
-                              </div>
-
-                              <div className="text-[10px] text-neutral-500">
-                                {data.count} transaction{data.count !== 1 ? 's' : ''} logged
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
+                    {/* No <Tooltip> here on purpose: the "Donut Center Display" panel
+                        below already shows category/amount/% on hover via hoveredSlice.
+                        Recharts' floating tooltip used to render at the same spot,
+                        stacking duplicate text on top of it — that was the overlap bug. */}
                   </PieChart>
                 </ResponsiveContainer>
 
