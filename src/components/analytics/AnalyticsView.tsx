@@ -1,6 +1,7 @@
 // FinPilot Analytics Engine — Real Deterministic Charts & Categorical Breakdown
 import React, { useState, useMemo } from 'react';
 import { useFinPilot } from '../../lib/supabase/context';
+import { DayTransactionsModal } from './DayTransactionsModal';
 import {
   calculateSpendingTrend,
   calculateCategoryBreakdown,
@@ -50,6 +51,7 @@ export const AnalyticsView: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('All');
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
+  const [selectedDayStr, setSelectedDayStr] = useState<string | null>(null);
   const [categoryDeepDive, setCategoryDeepDive] = useState<string>('Food');
   const [hoveredSlice, setHoveredSlice] = useState<{
     category: string;
@@ -209,6 +211,7 @@ export const AnalyticsView: React.FC = () => {
   const activeCategoryInfo = hoveredSlice || (categoryData.length > 0 ? categoryData[0] : null);
 
   return (
+    <>
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Title & Filter System */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-neutral-800">
@@ -700,8 +703,14 @@ export const AnalyticsView: React.FC = () => {
               return (
                 <div
                   key={d.day}
-                  title={`${d.dateStr}: ${currencySymbol}${d.amount.toLocaleString()}`}
-                  className={`h-9 rounded-md border flex flex-col items-center justify-center p-0.5 text-[10px] transition-transform hover:scale-105 ${bgColors[intensity]}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedDayStr(d.dateStr)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setSelectedDayStr(d.dateStr);
+                  }}
+                  title={`${d.dateStr}: ${currencySymbol}${d.amount.toLocaleString()} — click to see transactions`}
+                  className={`h-9 rounded-md border flex flex-col items-center justify-center p-0.5 text-[10px] cursor-pointer transition-transform hover:scale-105 hover:ring-2 hover:ring-emerald-500/50 ${bgColors[intensity]}`}
                 >
                   <span>{d.day}</span>
                   {d.amount > 0 && (
@@ -773,6 +782,9 @@ export const AnalyticsView: React.FC = () => {
         </div>
       </div>
     </div>
+
+    <DayTransactionsModal dateStr={selectedDayStr} onClose={() => setSelectedDayStr(null)} />
+    </>
   );
 };
 
