@@ -1,5 +1,5 @@
 // FinPilot Private Financial Workspace Sidebar
-import React from 'react';
+import React, { useState } from 'react';
 import { useFinPilot } from '../../lib/supabase/context';
 import { Logo } from '../brand/Logo';
 import {
@@ -21,7 +21,9 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Database
+  Database,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -50,6 +52,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     clearWorkspace
   } = useFinPilot();
 
+  // "Clear Workspace" used to fire on a single click with zero confirmation —
+  // that's exactly how real data gets wiped by accident. It now requires typing
+  // DELETE into a confirmation dialog before clearWorkspace() is ever called.
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+
   const primaryNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
@@ -77,6 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const displayEmail = user?.email || profile.email || 'private@finpilot.vault';
 
   return (
+    <>
     <aside
       className={`hidden md:flex flex-col border-r border-neutral-800/80 bg-neutral-950/95 transition-all duration-200 z-30 select-none ${
         collapsed ? 'w-20' : 'w-64'
@@ -187,7 +196,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {!collapsed && (
           <div className="pt-2 border-t border-neutral-800/80">
             <button
-              onClick={clearWorkspace}
+              onClick={() => {
+                setConfirmText('');
+                setConfirmClearOpen(true);
+              }}
               className="w-full text-left rounded-lg border border-neutral-800 bg-neutral-900/40 p-2.5 text-[11px] text-neutral-400 hover:text-neutral-200 hover:border-rose-500/30 transition-colors"
             >
               <span className="font-semibold text-neutral-300 block mb-0.5">Clear Workspace</span>
@@ -231,5 +243,63 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
     </aside>
+
+    {/* Clear Workspace confirmation — requires typing DELETE, no accidental one-click wipes */}
+    {confirmClearOpen && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="relative w-full max-w-sm rounded-2xl border border-rose-500/30 bg-neutral-900 p-6 shadow-2xl">
+          <button
+            onClick={() => setConfirmClearOpen(false)}
+            className="absolute top-4 right-4 text-neutral-400 hover:text-white transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 mb-4">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+
+          <h2 className="text-base font-bold text-white mb-1.5">Clear your entire workspace?</h2>
+          <p className="text-xs text-neutral-400 mb-4 leading-relaxed">
+            This permanently deletes <strong className="text-neutral-200">all</strong> transactions, budgets, goals,
+            and subscriptions. This cannot be undone — there is no backup to restore from on the free plan.
+          </p>
+
+          <label className="block text-[11px] font-medium text-neutral-400 mb-1.5">
+            Type <span className="font-mono font-bold text-rose-400">DELETE</span> to confirm
+          </label>
+          <input
+            type="text"
+            autoFocus
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="DELETE"
+            className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-rose-500 focus:outline-none mb-4"
+          />
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmClearOpen(false)}
+              className="flex-1 rounded-lg border border-neutral-800 bg-neutral-950/60 py-2.5 text-xs font-semibold text-neutral-300 hover:bg-neutral-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                if (confirmText.trim().toUpperCase() !== 'DELETE') return;
+                clearWorkspace();
+                setConfirmClearOpen(false);
+                setConfirmText('');
+              }}
+              disabled={confirmText.trim().toUpperCase() !== 'DELETE'}
+              className="flex-1 rounded-lg bg-rose-500 py-2.5 text-xs font-semibold text-white hover:bg-rose-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              Delete Everything
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
