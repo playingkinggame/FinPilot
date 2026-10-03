@@ -23,6 +23,7 @@ import {
   ShoppingBag,
   TrendingDown,
   ChevronRight,
+  ChevronLeft,
   Filter
 } from 'lucide-react';
 import {
@@ -52,6 +53,7 @@ export const AnalyticsView: React.FC = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('All');
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [selectedDayStr, setSelectedDayStr] = useState<string | null>(null);
+  const [heatmapMonthOffset, setHeatmapMonthOffset] = useState(0);
   const [categoryDeepDive, setCategoryDeepDive] = useState<string>('Food');
   const [hoveredSlice, setHoveredSlice] = useState<{
     category: string;
@@ -139,24 +141,32 @@ export const AnalyticsView: React.FC = () => {
   // Daily Spending (past 14 days)
   const dailyData = trendData.slice(-14);
 
-  // Dynamic Calendar Spending Heatmap for current month
-  const daysInCurrentMonth = new Date(curYear, curMonth + 1, 0).getDate();
+  // Dynamic Calendar Spending Heatmap — independent month navigation.
+  // heatmapMonthOffset: 0 = current month, 1 = one month back ("last month"), etc.
+  // This used to always show `curMonth`/`curYear` (the global "now") with no way
+  // to step back, so last month's spending was never visible. It's intentionally
+  // decoupled from curYear/curMonth above (which still drive the other charts)
+  // so navigating the heatmap doesn't affect the rest of the page.
+  const heatmapDate = useMemo(() => new Date(curYear, curMonth - heatmapMonthOffset, 1), [curYear, curMonth, heatmapMonthOffset]);
+  const heatmapYear = heatmapDate.getFullYear();
+  const heatmapMonth = heatmapDate.getMonth();
+  const heatmapMonthStr = `${heatmapYear}-${String(heatmapMonth + 1).padStart(2, '0')}`;
+  const heatmapMonthLabel = heatmapDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const daysInHeatmapMonth = new Date(heatmapYear, heatmapMonth + 1, 0).getDate();
+
   const heatmapDays = useMemo(() => {
-    return Array.from({ length: Math.min(31, daysInCurrentMonth) }, (_, i) => {
+    return Array.from({ length: Math.min(31, daysInHeatmapMonth) }, (_, i) => {
       const day = i + 1;
-      const dateStr = `${curMonthStr}-${String(day).padStart(2, '0')}`;
-      // Compute directly from filteredTransactions (respecting the category/payment
-      // filters) instead of relying on the top time-range trend, whose dates are
-      // "MM-DD" strings scoped to a rolling 7D/30D/etc window — comparing those
-      // against a full "YYYY-MM-DD" string never matched, so every cell showed ₹0
-      // regardless of the selected range. This always reflects the full current
-      // calendar month, independent of the 7D/30D/3M/6M/1Y selector above.
-      const amt = filteredTransactions
+      const dateStr = `${heatmapMonthStr}-${String(day).padStart(2, '0')}`;
+      // Compute directly from the full transaction list for whichever month is
+      // selected (not filteredTransactions' time-range, and not trendData's
+      // "MM-DD"-only window) so every month — including past ones — is correct.
+      const amt = transactions
         .filter((t) => t.type === 'expense' && t.date === dateStr)
         .reduce((s, t) => s + Number(t.amount || 0), 0);
       return { day, dateStr, amount: amt };
     });
-  }, [daysInCurrentMonth, curMonthStr, filteredTransactions]);
+  }, [daysInHeatmapMonth, heatmapMonthStr, transactions]);
 
   // Real Category Deep-Dive Trend
   const deepDiveTrend = useMemo(() => {
@@ -687,9 +697,41 @@ export const AnalyticsView: React.FC = () => {
 
         {/* CHART 10: Spending Intensity Heatmap */}
         <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-          <div className="pb-3 border-b border-neutral-800 mb-3">
-            <h2 className="text-sm font-semibold text-white">Chart 10: Calendar Spending Heatmap</h2>
-            <p className="text-xs text-neutral-400">Daily intensity for current billing cycle ({curMonthStr})</p>
+          <div className="pb-3 border-b border-neutral-800 mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-white">Chart 10: Calendar Spending Heatmap</h2>
+              <p className="text-xs text-neutral-400">Daily intensity — {heatmapMonthLabel}</p>
+            </div>
+            {/* Month navigation: lets you step back to last month (and beyond) instead
+                of being stuck on whatever the current calendar month is. */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setHeatmapMonthOffset((o) => Math.min(o + 1, 23))}
+                title="Previous month"
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-800 bg-neutral-950/60 text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+              {heatmapMonthOffset > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setHeatmapMonthOffset(0)}
+                  className="px-2 h-7 flex items-center rounded-lg border border-neutral-800 bg-neutral-950/60 text-[10px] font-semibold text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors"
+                >
+                  Today
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setHeatmapMonthOffset((o) => Math.max(o - 1, 0))}
+                disabled={heatmapMonthOffset === 0}
+                title="Next month"
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-800 bg-neutral-950/60 text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-neutral-400 disabled:hover:border-neutral-800"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-7 gap-1.5 pt-1">
             {heatmapDays.map((d) => {

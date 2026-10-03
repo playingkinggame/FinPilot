@@ -35,7 +35,7 @@ interface FinPilotContextType {
   setActiveView: (view: string) => void;
   // Auth methods
   signIn: (email: string, pass: string) => Promise<{ error?: string }>;
-  signUp: (email: string, pass: string, name: string) => Promise<{ error?: string }>;
+  signUp: (email: string, pass: string, name: string) => Promise<{ error?: string; needsConfirmation?: boolean }>;
   signInWithGoogle: () => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
@@ -474,15 +474,20 @@ export const FinPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         options: { data: { full_name: name } }
       });
       if (error) return { error: error.message };
-      const createdUser = data.user;
-      if (createdUser) {
-        // If email confirmation is required, Supabase won't return a session yet;
-        // handleUserLoggedIn still works off the returned user object for profile creation.
-        await handleUserLoggedIn(createdUser);
+
+      if (!data.session) {
+        // Email confirmation is required and Supabase did NOT return a session —
+        // this person is NOT actually signed in yet. Previously we still called
+        // handleUserLoggedIn() here, which set `user` in state and sent the app
+        // straight into the onboarding wizard before the email was ever verified.
+        // Don't log them in or touch `user`/`isOnboarded` at all until they've
+        // confirmed their email and signed in for real.
+        return { needsConfirmation: true };
+      }
+
+      if (data.user) {
+        await handleUserLoggedIn(data.user);
         setIsOnboarded(false);
-        if (!data.session) {
-          return { error: 'Account created! Please check your email to confirm your address before signing in.' };
-        }
       }
       return {};
     } else {

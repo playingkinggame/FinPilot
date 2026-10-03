@@ -15,9 +15,11 @@ import {
   TrendingUp,
   Shield,
   Sparkles,
-  ArrowLeft
+  ArrowLeft,
+  MailCheck
 } from 'lucide-react';
 import { z } from 'zod';
+import { supabase } from '../../lib/supabase/client';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -49,6 +51,25 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // When set, a dedicated "confirm your email" screen replaces the form below.
+  // Supabase requires the person to click the link in their confirmation email
+  // before a real session exists — this screen is that required step, shown
+  // BEFORE they can ever reach onboarding (previously signUp() skipped straight
+  // to onboarding without this, even though the person hadn't verified anything).
+  const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+
+  const handleResendConfirmation = async () => {
+    if (!pendingConfirmationEmail || !supabase) return;
+    setResendStatus('sending');
+    try {
+      await supabase.auth.resend({ type: 'signup', email: pendingConfirmationEmail });
+      setResendStatus('sent');
+    } catch {
+      setResendStatus('idle');
+    }
+  };
 
   // Password strength calculation
   const getPasswordStrength = (pass: string) => {
@@ -105,6 +126,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         const res = await signUp(email.trim(), password, fullName.trim());
         if (res.error) {
           setError(res.error);
+        } else if (res.needsConfirmation) {
+          // Not actually signed in yet — do NOT call onSuccess() (that would
+          // route back into the app). Show the confirm-email screen instead.
+          setPendingConfirmationEmail(email.trim());
         } else {
           setSuccessMessage('Workspace initialized successfully! Welcome to FinPilot.');
           if (onSuccess) onSuccess();
@@ -293,6 +318,55 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             {/* Subtle glow effect */}
             <div className="pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl" />
 
+            {pendingConfirmationEmail ? (
+              // ---- "Confirm your email" screen ----
+              // This is the real next step after sign-up (Supabase needs the
+              // email confirmed before a session exists). It now comes before
+              // the setup wizard instead of being skipped entirely.
+              <div className="flex flex-col items-center text-center py-4">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                  <MailCheck className="h-7 w-7" />
+                </div>
+                <h2 className="text-xl font-bold tracking-tight text-white">Check your email</h2>
+                <p className="text-xs text-neutral-400 mt-2 max-w-xs">We sent a confirmation link to</p>
+                <p className="text-sm font-semibold text-white mt-1 mb-4 break-all">{pendingConfirmationEmail}</p>
+                <p className="text-xs text-neutral-400 max-w-xs mb-6">
+                  Click the link in that email to verify your address. Once confirmed, sign in below — that's
+                  when your FinPilot setup begins.
+                </p>
+
+                {resendStatus === 'sent' ? (
+                  <p className="text-xs text-emerald-400 font-medium mb-4">Confirmation email resent — check your inbox.</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    disabled={resendStatus === 'sending'}
+                    className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 disabled:opacity-50 mb-4"
+                  >
+                    {resendStatus === 'sending' ? 'Resending…' : "Didn't get it? Resend email"}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingConfirmationEmail(null);
+                    setResendStatus('idle');
+                    setMode('signin');
+                    setPassword('');
+                    setConfirmPassword('');
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-emerald-500 py-2.5 text-xs font-semibold text-neutral-950 hover:bg-emerald-400 transition-colors shadow-sm"
+                >
+                  <span>I've confirmed — Sign In</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+            <>
             {/* Mode Header */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
@@ -611,6 +685,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </p>
               )}
             </div>
+            </>
+            )}
           </div>
         </motion.div>
       </div>
